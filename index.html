@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#8a3f18">
+<link rel="icon" href="icon-va.png">
+<title>Voice Assessment</title>
+<style>
+:root{--brown:#6f351b;--brown2:#8a3f18;--orange:#f47b20;--orange2:#ff9b36;--cream:#fff8ef;--white:#fff;--red:#c91520;--ink:#3e261b;--muted:#795f50;--line:#ead8c9;--green:#2e7d32;--amber:#b56b00}
+*{box-sizing:border-box}body{margin:0;background:var(--cream);font-family:Arial,sans-serif;color:var(--ink)}
+button,input,textarea,select{font:inherit}button{cursor:pointer}
+.splash{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:18px;background:radial-gradient(circle at 50% 20%,#fff 0,#fff8ef 45%,#f1d7bd 100%)}
+.splash-card{width:min(430px,100%);background:#fff;border-radius:28px;overflow:hidden;box-shadow:0 18px 50px #5a2d1628;border:1px solid #ead6c5}
+.splash-art{width:100%;display:block}.splash-bottom{padding:16px 22px 22px;text-align:center;background:#fff}
+.start{width:100%;border:0;padding:15px;border-radius:16px;background:linear-gradient(135deg,var(--orange),#ffad45);color:#fff;font-weight:800;font-size:18px;box-shadow:0 8px 20px #f47b2045}
+.created{font-size:12px;color:var(--muted);margin-top:12px}
+.app{display:none;min-height:100vh}.top{background:linear-gradient(135deg,var(--brown),var(--brown2));color:#fff;padding:18px 16px;display:flex;align-items:center;gap:12px}
+.top img{width:50px;height:50px;border-radius:50%;background:#fff}.top h1{margin:0;font-size:21px}.top small{opacity:.85}
+.nav{display:flex;gap:8px;padding:10px;background:#fff;box-shadow:0 2px 10px #00000010;position:sticky;top:0;z-index:4}.nav button{flex:1;border:0;border-radius:11px;padding:11px;background:#fff0e3;color:var(--brown);font-weight:700}.nav button.active{background:var(--brown);color:#fff}
+main{max-width:900px;margin:auto;padding:16px}.panel{background:#fff;border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:14px;box-shadow:0 5px 18px #5a2d160b}
+h2{margin:0 0 14px;font-size:19px}.muted{font-size:13px;color:var(--muted);line-height:1.5}
+.row{display:flex;gap:10px;flex-wrap:wrap}.row>div{flex:1;min-width:220px}
+label{font-size:13px;font-weight:700;display:block;margin:8px 0 6px}input,textarea,select{width:100%;padding:12px;border:1px solid #d9c4b3;border-radius:11px;background:#fff;color:var(--ink);font-size:16px}textarea{min-height:130px;resize:vertical}
+.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:10px}.btn{border:0;border-radius:11px;padding:12px 16px;background:var(--brown);color:#fff;font-weight:700}.btn.orange{background:var(--orange)}.btn.red{background:var(--red)}.btn.light{background:#fff0e3;color:var(--brown)}
+.status{padding:11px;border-radius:10px;background:#fff8ef;margin-top:10px;font-size:13px}
+.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.metric{padding:14px;border-radius:13px;background:#fff8ef;text-align:center}.metric b{display:block;font-size:26px;color:var(--brown)}
+.item{border:1px solid var(--line);border-radius:13px;padding:13px;margin:10px 0}.item-head{display:flex;gap:8px;align-items:center}.item-head strong{flex:1}.badge{padding:5px 8px;border-radius:99px;background:#fff0e3;color:var(--brown);font-size:12px}
+.result{border-left:5px solid var(--brown);background:#fffaf5;border-radius:10px;padding:12px;margin:10px 0}.result.ok{border-color:var(--green)}.result.mid{border-color:var(--amber)}.result.no{border-color:var(--red)}
+.master-row{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin:8px 0}.master-row input{min-width:0}
+.notice{background:#fff1df;border-left:4px solid var(--orange);padding:11px;border-radius:8px;font-size:13px}
+@media(max-width:650px){.summary{grid-template-columns:1fr}.master-row{grid-template-columns:1fr}.top h1{font-size:18px}}
+</style>
+</head>
+<body>
+<section id="splash" class="splash">
+  <div class="splash-card">
+    <img class="splash-art" src="splash-va.png" alt="Voice Assessment">
+    <div class="splash-bottom">
+      <button id="startApp" class="start">MULAI →</button>
+      <div class="created">Voice Assessment • Created by Dee</div>
+    </div>
+  </div>
+</section>
+
+<section id="app" class="app">
+<header class="top">
+  <img src="icon-va.png" alt="VA">
+  <div><h1>Voice Assessment</h1><small>SPEAK • ASSESS • IMPROVE</small></div>
+</header>
+<nav class="nav">
+  <button class="active" data-page="assessment">🎙️ Penilaian Voice</button>
+  <button data-page="master">⚙️ Master Penilaian</button>
+</nav>
+
+<main>
+<section id="assessment">
+<div class="panel">
+<h2>🎙️ Penilaian Voice</h2>
+<div class="row">
+<div><label>Nama Petugas</label><input id="petugas" placeholder="Masukkan nama petugas"></div>
+<div><label>Kategori</label><select id="kategori"></select></div>
+</div>
+<label>Ucapan / Transkrip</label>
+<textarea id="transcript" placeholder="Tekan Mulai Voice lalu bicara. Anda juga dapat mengetik ucapan untuk simulasi."></textarea>
+<div class="actions">
+<button class="btn orange" id="voice">🎙️ Mulai Voice</button>
+<button class="btn" id="evaluate">AI NILAI SEKARANG</button>
+<button class="btn light" id="clear">Bersihkan</button>
+</div>
+<div id="voiceStatus" class="status">Voice siap digunakan bila browser mendukung Web Speech API.</div>
+</div>
+
+<div id="resultPanel" class="panel" style="display:none">
+<h2>📊 Hasil Penilaian</h2>
+<div class="summary">
+<div class="metric">Total Score<b id="total">0</b></div>
+<div class="metric">Complete<b id="complete">0</b></div>
+<div class="metric">In Complete<b id="incomplete">0</b></div>
+</div>
+<div id="results"></div>
+</div>
+</section>
+
+<section id="master" style="display:none">
+<div class="panel">
+<h2>⚙️ Master Penilaian Voice</h2>
+<div class="notice">Saat ini 15 indikator: Greeting 5, Socialization 2, Education 3, Telling 2, Appreciation 3. Master dapat ditambah, diedit, atau dihapus.</div>
+<div id="masterList"></div>
+<hr style="border:0;border-top:1px solid var(--line);margin:16px 0">
+<h2>Tambah Indikator</h2>
+<div class="row">
+<div><label>Kategori</label><input id="newCat" placeholder="Contoh: Greeting"></div>
+<div><label>Kriteria</label><input id="newItem" placeholder="Tuliskan kriteria penilaian"></div>
+<div><label>Kata/frasa bantu</label><input id="newKeywords" placeholder="salam, selamat pagi, ..."></div>
+</div>
+<div class="actions"><button class="btn orange" id="addItem">+ Tambah ke Master</button><button class="btn light" id="resetMaster">Kembalikan Master Awal</button></div>
+</div>
+</section>
+</main>
+</section>
+
+<script>
+const initialMaster=[{"cat": "Greeting", "items": [{"text": "Mengucapkan salam", "keywords": []}, {"text": "Memperkenalkan diri dan sebut nama", "keywords": []}, {"text": "Menanyakan nama nasabah", "keywords": []}, {"text": "Menyebutkan nama nasabah jika sudah dikenal", "keywords": []}, {"text": "Menanyakan kebutuhan nasabah", "keywords": []}]}, {"cat": "Socialization", "items": [{"text": "Menginformasikan survey layanan oleh Halo BCA untuk BSQ", "keywords": []}, {"text": "Menginformasikan survey layanan oleh Gallup untuk CE", "keywords": []}]}, {"cat": "Education", "items": [{"text": "Melakukan edukasi penilaian BSQ dengan VOC dengan range penilaian terbaik di angka 5", "keywords": []}, {"text": "Melakukan edukasi penilaian CE dengan VOC dengan range penilaian terbaik di angka 5", "keywords": []}, {"text": "Melakukan edukasi penggunaan aplikasi dan mesin digital", "keywords": []}]}, {"cat": "Telling", "items": [{"text": "Melakukan penawaran produk-produk", "keywords": []}, {"text": "Menginformasikan promo dan kegiatan yang sedang dan akan dilakukan", "keywords": []}]}, {"cat": "Appreciation", "items": [{"text": "Menanyakan kebutuhan lain sebelum mengakhiri layanan", "keywords": []}, {"text": "Mengucapkan terima kasih", "keywords": []}, {"text": "Menyampaikan kata-kata magic word", "keywords": []}]}];
+let master=JSON.parse(localStorage.getItem("voiceAssessmentMaster")||"null")||initialMaster;
+const $=id=>document.getElementById(id);
+function save(){localStorage.setItem("voiceAssessmentMaster",JSON.stringify(master))}
+function esc(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
+function renderCats(){ $("kategori").innerHTML=master.map(g=>`<option value="${esc(g.cat)}">${esc(g.cat)}</option>`).join("") }
+function renderMaster(){
+ $("masterList").innerHTML=master.map((g,gi)=>`
+ <div class="item">
+   <div class="item-head"><strong>${esc(g.cat)}</strong><span class="badge">${g.items.length} indikator</span>
+   <button class="btn red" data-delcat="${gi}" style="padding:7px 9px">Hapus Kategori</button></div>
+   ${g.items.map((it,ii)=>`
+   <div class="master-row">
+    <input value="${esc(it.text)}" data-text="${gi}:${ii}" aria-label="Kriteria">
+    <input value="${esc((it.keywords||[]).join(", "))}" data-key="${gi}:${ii}" placeholder="kata/frasa bantu" aria-label="Kata bantu">
+    <button class="btn red" data-del="${gi}:${ii}" style="padding:8px 10px">×</button>
+   </div>`).join("")}
+ </div>`).join("");
+}
+function normalize(s){return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9\s]/g," ").replace(/\s+/g," ").trim()}
+function tokens(s){return normalize(s).split(" ").filter(x=>x.length>2)}
+function evaluate(){
+ const text=normalize($("transcript").value);
+ if(!text){alert("Masukkan atau ucapkan kalimat terlebih dahulu.");return}
+ const group=master.find(g=>g.cat===$("kategori").value);
+ if(!group||!group.items.length)return;
+ let points=0, complete=0, incomplete=0, html="";
+ group.items.forEach((it,i)=>{
+   const custom=(it.keywords||[]).map(normalize).filter(Boolean);
+   const criterionWords=tokens(it.text).filter(w=>!["melakukan","dengan","untuk","yang","dan","oleh","angka"].includes(w));
+   let matched=0;
+   custom.forEach(k=>{if(k && text.includes(k)) matched+=2});
+   criterionWords.forEach(w=>{if(text.includes(w)) matched+=1});
+   const denom=Math.max(1,custom.length*2+criterionWords.length);
+   const ratio=Math.min(1,matched/denom);
+   let score=0, cls="no", label="No";
+   if(ratio>=.55){score=100;complete++;cls="ok";label="Complete"}
+   else if(ratio>=.25){score=50;incomplete++;cls="mid";label="In Complete"}
+   points+=score;
+   html+=`<div class="result ${cls}"><b>${i+1}. ${esc(it.text)}</b><br><strong>${label} — ${score}</strong><br><span class="muted">Pencocokan voice: ${(ratio*100).toFixed(0)}%</span></div>`;
+ });
+ const total=Math.round(points/group.items.length);
+ $("total").textContent=total;
+ $("complete").textContent=complete;
+ $("incomplete").textContent=incomplete;
+ $("results").innerHTML=html;
+ $("resultPanel").style.display="block";
+}
+$("startApp").onclick=()=>{$("splash").style.display="none";$("app").style.display="block"}
+$("evaluate").onclick=evaluate;
+$("clear").onclick=()=>{$("transcript").value="";$("resultPanel").style.display="none"};
+document.querySelectorAll(".nav button").forEach(btn=>btn.onclick=()=>{
+ document.querySelectorAll(".nav button").forEach(b=>b.classList.remove("active"));btn.classList.add("active");
+ $("assessment").style.display=btn.dataset.page==="assessment"?"block":"none";
+ $("master").style.display=btn.dataset.page==="master"?"block":"none";
+});
+$("addItem").onclick=()=>{
+ const cat=$("newCat").value.trim(), text=$("newItem").value.trim(), keys=$("newKeywords").value.split(",").map(x=>x.trim()).filter(Boolean);
+ if(!cat||!text){alert("Kategori dan kriteria wajib diisi.");return}
+ let g=master.find(x=>normalize(x.cat)===normalize(cat));
+ if(!g){g={cat,items:[]};master.push(g)}
+ g.items.push({text,keywords:keys});save();renderCats();renderMaster();
+ $("newCat").value="";$("newItem").value="";$("newKeywords").value="";
+};
+$("resetMaster").onclick=()=>{
+ if(confirm("Kembalikan Master Penilaian ke 15 indikator awal?")){master=JSON.parse(JSON.stringify(initialMaster));save();renderCats();renderMaster()}
+};
+$("masterList").addEventListener("input",e=>{
+ const p=e.target.dataset.text||e.target.dataset.key;if(!p)return;
+ const [g,i]=p.split(":").map(Number);
+ if(e.target.dataset.text!==undefined) master[g].items[i].text=e.target.value;
+ else master[g].items[i].keywords=e.target.value.split(",").map(x=>x.trim()).filter(Boolean);
+ save();
+});
+$("masterList").addEventListener("click",e=>{
+ const d=e.target.dataset.del,c=e.target.dataset.delcat;
+ if(d){const [g,i]=d.split(":").map(Number);master[g].items.splice(i,1);save();renderMaster();renderCats()}
+ if(c!==undefined){master.splice(Number(c),1);save();renderMaster();renderCats()}
+});
+let rec=null;
+if("SpeechRecognition" in window || "webkitSpeechRecognition" in window){
+ const SR=window.SpeechRecognition||window.webkitSpeechRecognition;rec=new SR();
+ rec.lang="id-ID";rec.continuous=true;rec.interimResults=true;
+ rec.onstart=()=>{$("voiceStatus").textContent="🎙️ Mendengarkan... silakan bicara."};
+ rec.onresult=e=>{let out="";for(let i=e.resultIndex;i<e.results.length;i++)out+=e.results[i][0].transcript+" ";$("transcript").value=(($("transcript").value+" "+out).trim()).replace(/\s+/g," ")};
+ rec.onerror=e=>$("voiceStatus").textContent="Voice berhenti: "+e.error;
+ rec.onend=()=>{$("voiceStatus").textContent="Voice selesai. Tekan AI NILAI SEKARANG untuk menilai."};
+}else{$("voice").disabled=true;$("voiceStatus").textContent="Browser tidak mendukung Web Speech API. Ketik transkrip untuk simulasi."}
+$("voice").onclick=()=>{if(rec)try{rec.start()}catch(e){}};
+renderCats();renderMaster();
+</script>
+</body></html>
