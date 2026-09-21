@@ -72,9 +72,12 @@ label{font-size:13px;font-weight:700;display:block;margin:8px 0 6px}input,textar
     <div class="sound-wave" aria-hidden="true">
       <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
     </div>
-    <div id="liveTranscript" style="min-height:55px;text-align:left;background:#fff;border:1px solid #ead8c9;border-radius:12px;padding:11px;color:#795f50;font-size:13px;margin-bottom:14px">
+    <div id="liveTranscript" style="min-height:55px;text-align:left;background:#fff;border:1px solid #ead8c9;border-radius:12px;padding:11px;color:#795f50;font-size:13px;margin-bottom:10px">
       Suara yang terdeteksi akan muncul di sini...
     </div>
+    <button id="clearVoice" type="button" style="width:100%;margin-bottom:10px;padding:11px;border:1px solid #e7cdb9;border-radius:12px;background:#fff7ef;color:#8a4b22;font-weight:800">
+      🗑️ Hapus Hasil Voice
+    </button>
     <button id="stopRecord" class="stop-record">⏹ Selesai & Kembali</button>
   </div>
 </section>
@@ -344,10 +347,25 @@ function hideRecording(){
   $("recordingPage").style.display="none";
   $("recordingPage").setAttribute("aria-hidden","true");
 }
+function resetVoiceSession(){
+  $("transcript").value="";
+  $("liveTranscript").textContent="Suara yang terdeteksi akan muncul di sini...";
+  $("resultPanel").style.display="none";
+  $("reviewSpeakingStatus").textContent="Belum ada review.";
+  $("reviewAvatar").classList.remove("ai-speaking");
+  if("speechSynthesis" in window) window.speechSynthesis.cancel();
+}
 $("voice").onclick=()=>{
   if(!rec){alert("Voice tidak didukung browser ini.");return}
+  // Otomatis bersihkan hasil/transkrip voice sebelumnya setiap mulai rekaman baru.
+  resetVoiceSession();
   showRecording();
   try{rec.start()}catch(e){}
+};
+$("clearVoice").onclick=()=>{
+  // Tombol manual untuk menghapus hasil voice saat halaman rekaman terbuka.
+  resetVoiceSession();
+  $("voiceStatus").textContent="Hasil voice sebelumnya sudah dihapus. Silakan mulai berbicara lagi.";
 };
 $("stopRecord").onclick=()=>{
   if(rec)try{rec.stop()}catch(e){}
