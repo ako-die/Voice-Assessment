@@ -33,6 +33,10 @@ button,input,textarea,select{font:inherit}button{cursor:pointer}
 @keyframes micPulse{0%,100%{box-shadow:0 0 0 0 rgba(244,123,32,.55)}50%{box-shadow:0 0 0 25px rgba(244,123,32,0)}}
 @keyframes soundWave{0%,100%{height:10px;opacity:.45}50%{height:40px;opacity:1}}
 
+
+.ai-speaking{animation:aiSpeak .75s ease-in-out infinite alternate}
+@keyframes aiSpeak{from{transform:scale(1);box-shadow:0 0 0 rgba(244,123,32,0)}to{transform:scale(1.08);box-shadow:0 0 18px rgba(244,123,32,.45)}}
+
 .app{display:none;min-height:100vh}.top{background:linear-gradient(135deg,var(--brown),var(--brown2));color:#fff;padding:18px 16px;display:flex;align-items:center;gap:12px}
 .top img{width:50px;height:50px;border-radius:50%;background:#fff}.top h1{margin:0;font-size:21px}.top small{opacity:.85}
 .nav{display:flex;gap:8px;padding:10px;background:#fff;box-shadow:0 2px 10px #00000010;position:sticky;top:0;z-index:4}.nav button{flex:1;border:0;border-radius:11px;padding:11px;background:#fff0e3;color:var(--brown);font-weight:700}.nav button.active{background:var(--brown);color:#fff}
@@ -112,7 +116,17 @@ label{font-size:13px;font-weight:700;display:block;margin:8px 0 6px}input,textar
 <div id="results"></div>
 <div id="coach" class="panel" style="margin:14px 0 0;padding:15px;background:#fff8ef">
   <h2 style="margin-bottom:8px">🤖 AI Review &amp; Coaching</h2>
-  <div id="reviewSummary" class="muted">Hasil review akan muncul setelah penilaian.</div>
+  <div class="voice-review-box" style="margin-top:12px;padding:15px;border-radius:14px;background:#fff0e3;border:1px solid #efd0b8">
+  <div style="display:flex;align-items:center;gap:12px">
+    <div id="reviewAvatar" style="width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,#8a3f18,#f47b20);display:flex;align-items:center;justify-content:center;font-size:27px">🤖</div>
+    <div style="flex:1">
+      <b style="color:#6f351b">AI Review</b>
+      <div id="reviewSpeakingStatus" class="muted" style="margin-top:3px">Review akan dibacakan setelah penilaian.</div>
+    </div>
+    <button id="speakReview" class="btn orange" type="button" style="padding:10px 12px">🔊 Dengarkan</button>
+  </div>
+</div>
+<div id="reviewSummary" class="muted" style="margin-top:12px">Hasil review akan muncul setelah penilaian.</div>
   <div id="improvements"></div>
 </div>
 </div>
@@ -204,6 +218,36 @@ function feedbackFor(item,label){
  if(t.includes("magic")) return "Tambahkan magic word seperti silakan, mohon, maaf, permisi, atau dengan senang hati secara natural.";
  return "Perjelas kembali bagian ini dalam percakapan berikutnya.";
 }
+
+let lastReviewText="";
+let speakingTimer=null;
+
+function getIndonesianVoice(){
+  if(!("speechSynthesis" in window)) return null;
+  const voices=window.speechSynthesis.getVoices();
+  return voices.find(v=>/^id(-|_)/i.test(v.lang)) || voices.find(v=>/indones|Indonesia/i.test(v.name)) || voices[0] || null;
+}
+function speakReview(text){
+  if(!("speechSynthesis" in window)){
+    $("reviewSpeakingStatus").textContent="Browser tidak mendukung suara AI.";
+    return;
+  }
+  window.speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(text);
+  u.lang="id-ID";
+  u.rate=.92;
+  u.pitch=1.02;
+  const voice=getIndonesianVoice();
+  if(voice) u.voice=voice;
+  $("reviewAvatar").classList.add("ai-speaking");
+  $("reviewSpeakingStatus").textContent="🔊 AI sedang membacakan review...";
+  u.onend=()=>{$("reviewAvatar").classList.remove("ai-speaking");$("reviewSpeakingStatus").textContent="Review selesai dibacakan.";};
+  u.onerror=()=>{$("reviewAvatar").classList.remove("ai-speaking");$("reviewSpeakingStatus").textContent="Suara AI tidak dapat diputar di browser ini.";};
+  window.speechSynthesis.speak(u);
+}
+$("speakReview").onclick=()=>{if(lastReviewText)speakReview(lastReviewText)};
+if("speechSynthesis" in window) window.speechSynthesis.onvoiceschanged=()=>{};
+
 function evaluate(){
  const raw=$("transcript").value.trim(), text=norm(raw);
  if(!text){alert("Masukkan atau ucapkan kalimat terlebih dahulu.");return}
@@ -229,11 +273,25 @@ function evaluate(){
  $("improvements").innerHTML=improve.length
    ? `<div class="notice" style="margin-top:10px"><b>Prioritas perbaikan:</b><ul>${improve.slice(0,5).map(x=>`<li><b>${esc(x.item)}</b> — ${esc(x.feedback)}</li>`).join("")}</ul></div>`
    : `<div class="notice" style="margin-top:10px">Semua indikator pada kategori ini terdeteksi. Pertahankan konsistensi dan kualitas penyampaian.</div>`;
+ lastReviewText = `Hasil penilaian ${group.cat}. Nilai total ${total}. ${complete} indikator sudah terpenuhi, ${incomplete} perlu penguatan, dan ${no} belum terlihat. `;
+ if(improve.length){
+   lastReviewText += "Beberapa hal yang perlu diperbaiki. ";
+   improve.slice(0,3).forEach((x,n)=>{ lastReviewText += `${n+1}. ${x.item}. ${x.feedback} `; });
+ }else{
+   lastReviewText += "Pertahankan kualitas penyampaian dan konsistensi layanan.";
+ }
+ $("reviewSpeakingStatus").textContent="Review siap dibacakan oleh AI.";
  $("resultPanel").style.display="block";
+ setTimeout(()=>speakReview(lastReviewText),250);
 }
 $("startApp").onclick=()=>{$("splash").style.display="none";$("app").style.display="block"}
 $("evaluate").onclick=evaluate;
-$("clear").onclick=()=>{$("transcript").value="";$("resultPanel").style.display="none"};
+$("clear").onclick=()=>{
+  $("transcript").value="";
+  $("resultPanel").style.display="none";
+  if("speechSynthesis" in window) window.speechSynthesis.cancel();
+  $("reviewAvatar").classList.remove("ai-speaking");
+};
 document.querySelectorAll(".nav button").forEach(btn=>btn.onclick=()=>{
  document.querySelectorAll(".nav button").forEach(b=>b.classList.remove("active"));btn.classList.add("active");
  $("assessment").style.display=btn.dataset.page==="assessment"?"block":"none";
