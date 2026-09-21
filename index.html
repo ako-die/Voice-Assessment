@@ -324,20 +324,40 @@ $("masterList").addEventListener("click",e=>{
  if(c!==undefined){master.splice(Number(c),1);save();renderMaster();renderCats()}
 });
 let rec=null;
+let finalVoiceTranscript="";
 if("SpeechRecognition" in window || "webkitSpeechRecognition" in window){
  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;rec=new SR();
  rec.lang="id-ID";rec.continuous=true;rec.interimResults=true;
- rec.onstart=()=>{showRecording();$("voiceStatus").textContent="🎙️ AI sedang mendengarkan... silakan bicara."};
+ rec.onstart=()=>{
+  showRecording();
+  $("voiceStatus").textContent="🎙️ AI sedang mendengarkan... silakan bicara.";
+ };
  rec.onresult=e=>{
-  let out="";
-  for(let i=e.resultIndex;i<e.results.length;i++)out+=e.results[i][0].transcript+" ";
-  const combined=(($("transcript").value+" "+out).trim()).replace(/\s+/g," ");
-  $("transcript").value=combined;
-  $("liveTranscript").textContent=combined||"Suara yang terdeteksi akan muncul di sini...";
-};
+  // Web Speech API dapat mengirim ulang hasil lama ketika recognition berjalan.
+  // Hanya simpan hasil FINAL sekali; hasil INTERIM hanya ditampilkan sementara.
+  let interim="";
+  for(let i=e.resultIndex;i<e.results.length;i++){
+   const piece=(e.results[i][0].transcript||"").trim();
+   if(!piece) continue;
+   if(e.results[i].isFinal){
+    finalVoiceTranscript=(finalVoiceTranscript+" "+piece).trim();
+   }else{
+    interim=(interim+" "+piece).trim();
+   }
+  }
+  const display=(finalVoiceTranscript+" "+interim).trim().replace(/\s+/g," ");
+  $("transcript").value=finalVoiceTranscript;
+  $("liveTranscript").textContent=display||"Suara yang terdeteksi akan muncul di sini...";
+ };
  rec.onerror=e=>{hideRecording();$("voiceStatus").textContent="Voice berhenti: "+e.error};
- rec.onend=()=>{hideRecording();$("voiceStatus").textContent="Voice selesai. Tekan AI NILAI SEKARANG untuk menilai."};
+ rec.onend=()=>{
+  hideRecording();
+  $("transcript").value=finalVoiceTranscript.trim();
+  $("liveTranscript").textContent=finalVoiceTranscript.trim()||"Suara yang terdeteksi akan muncul di sini...";
+  $("voiceStatus").textContent="Voice selesai. Tekan AI NILAI SEKARANG untuk menilai.";
+ };
 }else{$("voice").disabled=true;$("voiceStatus").textContent="Browser tidak mendukung Web Speech API. Ketik transkrip untuk simulasi."}
+
 function showRecording(){
   $("recordingPage").style.display="flex";
   $("recordingPage").setAttribute("aria-hidden","false");
@@ -348,6 +368,7 @@ function hideRecording(){
   $("recordingPage").setAttribute("aria-hidden","true");
 }
 function resetVoiceSession(){
+  finalVoiceTranscript="";
   $("transcript").value="";
   $("liveTranscript").textContent="Suara yang terdeteksi akan muncul di sini...";
   $("resultPanel").style.display="none";
