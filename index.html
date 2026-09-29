@@ -75,7 +75,7 @@ label{font-size:13px;font-weight:700;display:block;margin:8px 0 6px}input,textar
     <div class="actions" style="display:flex;flex-direction:column;gap:10px">
       <button id="startRecord" class="btn orange" type="button">🎙️ Mulai Merekam</button>
       <button id="stopRecord" class="btn" type="button" disabled>⏹ Selesai & Simpan Rekaman</button>
-      <button id="continueAssessment" class="btn" type="button" disabled>📝 Mulai Penilaian</button>
+      <button id="continueAssessment" class="btn" type="button" disabled>📝 Kembali ke Penilaian</button>
       <button id="clearVoice" class="btn light" type="button">🗑️ Hapus Rekaman</button>
       <button id="backAssessment" class="btn light" type="button">↩ Kembali</button>
     </div>
@@ -432,7 +432,7 @@ $("startRecord").onclick=async()=>{
         $("savedAudio").style.display="block";
         $("continueAssessment").disabled=false;
         $("clearVoice").disabled=false;
-        $("recordingInstruction").textContent="Rekaman tersimpan sementara. Putar ulang untuk memastikan suara jelas, lalu mulai penilaian.";
+        $("recordingInstruction").textContent="Rekaman tersimpan sementara. Putar sampai selesai; AI akan menilai otomatis berdasarkan transkrip.";
         setRecordingStatus("Rekaman tersimpan. Silakan putar ulang sebelum menilai.");
       }else{
         setRecordingStatus("Rekaman kosong. Silakan coba merekam kembali.");
@@ -468,10 +468,33 @@ $("continueAssessment").onclick=()=>{
   $("transcript").value=finalVoiceTranscript.trim();
   hideRecording();
   $("voiceStatus").textContent=$("transcript").value
-    ?"Rekaman siap dinilai. Periksa transkrip, lalu tekan AI NILAI SEKARANG."
+    ?"Rekaman siap dinilai. Penilaian dapat dijalankan sekarang."
     :"Audio tersimpan, tetapi transkrip otomatis belum tersedia. Isi transkrip terlebih dahulu sebelum menilai.";
   window.scrollTo({top:0,behavior:"smooth"});
 };
+
+// Setelah pengguna memutar rekaman sampai selesai, jalankan penilaian otomatis.
+$("savedAudio").addEventListener("ended",()=>{
+  const transcript=finalVoiceTranscript.trim();
+  if(!transcript){
+    setRecordingStatus("Pemutaran selesai, tetapi transkrip suara belum tersedia. Browser belum menghasilkan teks dari rekaman ini.");
+    $("recordingInstruction").textContent="Audio berhasil diputar. Namun penilaian membutuhkan transkrip. Coba rekam ulang dengan izin mikrofon aktif, atau kembali dan isi transkrip secara manual.";
+    return;
+  }
+  $("transcript").value=transcript;
+  hideRecording();
+  $("assessment").style.display="block";
+  $("master").style.display="none";
+  document.querySelectorAll(".nav button").forEach(b=>b.classList.toggle("active",b.dataset.page==="assessment"));
+  $("voiceStatus").textContent="Pemutaran selesai. AI sedang menilai hasil rekaman...";
+  window.scrollTo({top:0,behavior:"smooth"});
+  // Beri kesempatan halaman berpindah sebelum hasil penilaian ditampilkan.
+  setTimeout(()=>{
+    evaluate();
+    $("voiceStatus").textContent="Penilaian otomatis selesai berdasarkan transkrip rekaman.";
+    $("resultPanel").scrollIntoView({behavior:"smooth",block:"start"});
+  },150);
+});
 $("clearVoice").onclick=()=>{
   if(isRecording){
     if(mediaRecorder && mediaRecorder.state!=="inactive") try{mediaRecorder.stop()}catch(e){}
