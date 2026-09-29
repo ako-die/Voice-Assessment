@@ -62,24 +62,23 @@ label{font-size:13px;font-weight:700;display:block;margin:8px 0 6px}input,textar
   </div>
 </section>
 
-<section id="recordingPage" class="recording-page" aria-hidden="true" style="display:none">
+<section id="recordingPage" class="recording-overlay" aria-hidden="true">
   <div class="recording-card">
-    <div class="recording-mic">🎙️</div>
-    <h2>Rekam Suara</h2>
-    <p id="recordingInstruction">Tekan mulai untuk merekam. Setelah selesai, simpan dan putar ulang rekaman sebelum penilaian.</p>
-    <div class="sound-wave" id="recordingWave" aria-hidden="true">
+    <div style="font-size:13px;color:#795f50;font-weight:700;margin-bottom:8px">VOICE ASSESSMENT</div>
+    <div class="mic-circle"><span>🎙️</span></div>
+    <div class="recording-label">● SEDANG MEREKAM</div>
+    <h2>Mendengarkan...</h2>
+    <p>Silakan berbicara sesuai percakapan yang ingin dinilai.<br>AI sedang mendengarkan dan merekam suara.</p>
+    <div class="sound-wave" aria-hidden="true">
       <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
     </div>
-    <div id="recordingStatus" class="status" style="margin:12px 0">Siap merekam.</div>
-    <audio id="savedAudio" controls style="display:none;width:100%;margin:14px 0"></audio>
-    <div class="actions" style="display:flex;flex-direction:column;gap:10px">
-      <button id="startRecord" class="btn orange" type="button">🎙️ Mulai Merekam</button>
-      <button id="stopRecord" class="btn" type="button" disabled>⏹ Selesai & Simpan Rekaman</button>
-      <button id="continueAssessment" class="btn" type="button" disabled>📝 Kembali ke Penilaian</button>
-      <button id="clearVoice" class="btn light" type="button">🗑️ Hapus Rekaman</button>
-      <button id="backAssessment" class="btn light" type="button">↩ Kembali</button>
+    <div id="liveTranscript" style="min-height:55px;text-align:left;background:#fff;border:1px solid #ead8c9;border-radius:12px;padding:11px;color:#795f50;font-size:13px;margin-bottom:10px">
+      Suara yang terdeteksi akan muncul di sini...
     </div>
-    <div id="recordingNote" class="muted" style="margin-top:12px;font-size:12px">Rekaman disimpan sementara di halaman ini. Hapus setelah selesai menilai.</div>
+    <button id="clearVoice" type="button" style="width:100%;margin-bottom:10px;padding:11px;border:1px solid #e7cdb9;border-radius:12px;background:#fff7ef;color:#8a4b22;font-weight:800">
+      🗑️ Hapus Hasil Voice
+    </button>
+    <button id="stopRecord" class="stop-record">⏹ Selesai & Kembali</button>
   </div>
 </section>
 <section id="app" class="app">
@@ -103,7 +102,7 @@ label{font-size:13px;font-weight:700;display:block;margin:8px 0 6px}input,textar
 <label>Ucapan / Transkrip</label>
 <textarea id="transcript" placeholder="Tekan Mulai Voice lalu bicara. Anda juga dapat mengetik ucapan untuk simulasi."></textarea>
 <div class="actions">
-<button class="btn orange" id="voice">🎙️ Rekam Suara</button>
+<button class="btn orange" id="voice">🎙️ Mulai Voice</button>
 <button class="btn" id="evaluate">AI NILAI SEKARANG</button>
 <button class="btn light" id="clear">Bersihkan</button>
 </div>
@@ -326,236 +325,75 @@ $("masterList").addEventListener("click",e=>{
 });
 let rec=null;
 let finalVoiceTranscript="";
-let mediaRecorder=null;
-let audioStream=null;
-let audioChunks=[];
-let savedAudioUrl="";
-let isRecording=false;
+if("SpeechRecognition" in window || "webkitSpeechRecognition" in window){
+ const SR=window.SpeechRecognition||window.webkitSpeechRecognition;rec=new SR();
+ rec.lang="id-ID";rec.continuous=true;rec.interimResults=true;
+ rec.onstart=()=>{
+  showRecording();
+  $("voiceStatus").textContent="🎙️ AI sedang mendengarkan... silakan bicara.";
+ };
+ rec.onresult=e=>{
+  // Web Speech API dapat mengirim ulang hasil lama ketika recognition berjalan.
+  // Hanya simpan hasil FINAL sekali; hasil INTERIM hanya ditampilkan sementara.
+  let interim="";
+  for(let i=e.resultIndex;i<e.results.length;i++){
+   const piece=(e.results[i][0].transcript||"").trim();
+   if(!piece) continue;
+   if(e.results[i].isFinal){
+    finalVoiceTranscript=(finalVoiceTranscript+" "+piece).trim();
+   }else{
+    interim=(interim+" "+piece).trim();
+   }
+  }
+  const display=(finalVoiceTranscript+" "+interim).trim().replace(/\s+/g," ");
+  $("transcript").value=finalVoiceTranscript;
+  $("liveTranscript").textContent=display||"Suara yang terdeteksi akan muncul di sini...";
+ };
+ rec.onerror=e=>{hideRecording();$("voiceStatus").textContent="Voice berhenti: "+e.error};
+ rec.onend=()=>{
+  hideRecording();
+  $("transcript").value=finalVoiceTranscript.trim();
+  $("liveTranscript").textContent=finalVoiceTranscript.trim()||"Suara yang terdeteksi akan muncul di sini...";
+  $("voiceStatus").textContent="Voice selesai. Tekan AI NILAI SEKARANG untuk menilai.";
+ };
+}else{$("voice").disabled=true;$("voiceStatus").textContent="Browser tidak mendukung Web Speech API. Ketik transkrip untuk simulasi."}
 
-function setRecordingStatus(text){
-  $("recordingStatus").textContent=text;
-}
 function showRecording(){
   $("recordingPage").style.display="flex";
   $("recordingPage").setAttribute("aria-hidden","false");
+  $("voiceStatus").textContent="🎙️ AI sedang mendengarkan...";
 }
 function hideRecording(){
   $("recordingPage").style.display="none";
   $("recordingPage").setAttribute("aria-hidden","true");
 }
-function clearSavedAudio(){
-  if(savedAudioUrl){
-    URL.revokeObjectURL(savedAudioUrl);
-    savedAudioUrl="";
-  }
-  $("savedAudio").pause();
-  $("savedAudio").removeAttribute("src");
-  $("savedAudio").load();
-  $("savedAudio").style.display="none";
-  $("continueAssessment").disabled=true;
-  $("clearVoice").disabled=true;
-}
 function resetVoiceSession(){
-  if(rec) try{rec.abort()}catch(e){}
-  if(mediaRecorder && mediaRecorder.state!=="inactive"){
-    try{mediaRecorder.onstop=null;mediaRecorder.stop()}catch(e){}
-  }
-  if(audioStream){audioStream.getTracks().forEach(t=>t.stop());audioStream=null;}
-  isRecording=false;
-  audioChunks=[];
   finalVoiceTranscript="";
   $("transcript").value="";
+  $("liveTranscript").textContent="Suara yang terdeteksi akan muncul di sini...";
   $("resultPanel").style.display="none";
   $("reviewSpeakingStatus").textContent="Belum ada review.";
   $("reviewAvatar").classList.remove("ai-speaking");
   if("speechSynthesis" in window) window.speechSynthesis.cancel();
-  clearSavedAudio();
-  $("startRecord").disabled=false;
-  $("stopRecord").disabled=true;
-  $("recordingWave").style.opacity=".35";
-  $("recordingInstruction").textContent="Tekan mulai untuk merekam. Setelah selesai, simpan dan putar ulang rekaman sebelum penilaian.";
-  setRecordingStatus("Siap merekam.");
 }
-function normalizeTranscriptText(text){
-  return (text||"").replace(/\s+/g," ").replace(/\s+([,.!?;:])/g,"$1").trim();
-}
-function removeRepeatedTranscriptParts(text){
-  let words=normalizeTranscriptText(text).split(" ").filter(Boolean);
-  let changed=true;
-  while(changed){
-    changed=false;
-    outer:
-    for(let size=Math.min(10,Math.floor(words.length/2));size>=2;size--){
-      for(let i=0;i+2*size<=words.length;i++){
-        let same=true;
-        for(let j=0;j<size;j++){
-          if(words[i+j].toLocaleLowerCase("id-ID")!==words[i+size+j].toLocaleLowerCase("id-ID")){
-            same=false;break;
-          }
-        }
-        if(same){words.splice(i+size,size);changed=true;break outer;}
-      }
-    }
-  }
-  return words.join(" ");
-}
-function updateTranscriptFromRecognition(results){
-  // Bangun ulang dari hasil FINAL yang aktif; hasil interim tidak ditambahkan.
-  const finalParts=[];
-  for(let i=0;i<results.length;i++){
-    if(!results[i].isFinal) continue;
-    const part=normalizeTranscriptText(results[i][0] && results[i][0].transcript);
-    if(!part) continue;
-    const currentKey=part.toLocaleLowerCase("id-ID").replace(/[.,!?;:]/g,"").trim();
-    const previous=finalParts.length
-      ? finalParts[finalParts.length-1].toLocaleLowerCase("id-ID").replace(/[.,!?;:]/g,"").trim()
-      : "";
-    if(currentKey && currentKey===previous) continue;
-
-    let words=part.split(" ");
-    if(finalParts.length){
-      const prevWords=finalParts[finalParts.length-1].split(" ");
-      let overlap=Math.min(10,prevWords.length,words.length);
-      while(overlap>0){
-        const a=prevWords.slice(-overlap).map(x=>x.toLocaleLowerCase("id-ID"));
-        const b=words.slice(0,overlap).map(x=>x.toLocaleLowerCase("id-ID"));
-        if(a.join(" ")===b.join(" ")) break;
-        overlap--;
-      }
-      if(overlap>0) words=words.slice(overlap);
-    }
-    if(words.length) finalParts.push(words.join(" "));
-  }
-  finalVoiceTranscript=removeRepeatedTranscriptParts(finalParts.join(" "));
-}
-if("SpeechRecognition" in window || "webkitSpeechRecognition" in window){
-  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  rec=new SR();
-  rec.lang="id-ID";
-  rec.continuous=true;
-  rec.interimResults=true;
-  rec.onresult=e=>{
-    updateTranscriptFromRecognition(e.results);
-  };
-  rec.onerror=e=>{
-    // Audio tetap direkam walau fitur transkripsi tidak tersedia/terputus.
-    if(e.error!=="no-speech" && e.error!=="aborted"){
-      setRecordingStatus("Audio tetap direkam. Transkripsi otomatis: "+e.error);
-    }
-  };
-}else{
-  $("voiceStatus").textContent="Browser tidak mendukung transkripsi otomatis. Rekaman audio tetap dapat dicoba; transkrip perlu diisi manual.";
-}
-
 $("voice").onclick=()=>{
+  if(!rec){alert("Voice tidak didukung browser ini.");return}
+  // Otomatis bersihkan hasil/transkrip voice sebelumnya setiap mulai rekaman baru.
   resetVoiceSession();
   showRecording();
-  setRecordingStatus("Siap merekam. Tekan Mulai Merekam.");
+  try{rec.start()}catch(e){}
 };
-$("startRecord").onclick=async()=>{
-  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder){
-    setRecordingStatus("Browser belum mendukung perekaman audio. Gunakan Chrome terbaru melalui HTTPS.");
-    return;
-  }
-  try{
-    audioStream=await navigator.mediaDevices.getUserMedia({audio:true});
-    audioChunks=[];
-    const mimeTypes=["audio/webm;codecs=opus","audio/webm","audio/mp4"];
-    const mimeType=mimeTypes.find(t=>MediaRecorder.isTypeSupported(t));
-    mediaRecorder=mimeType?new MediaRecorder(audioStream,{mimeType}):new MediaRecorder(audioStream);
-    mediaRecorder.ondataavailable=e=>{if(e.data && e.data.size>0) audioChunks.push(e.data);};
-    mediaRecorder.onstop=()=>{
-      const blob=new Blob(audioChunks,{type:mediaRecorder.mimeType||"audio/webm"});
-      if(blob.size){
-        clearSavedAudio();
-        savedAudioUrl=URL.createObjectURL(blob);
-        $("savedAudio").src=savedAudioUrl;
-        $("savedAudio").style.display="block";
-        $("continueAssessment").disabled=false;
-        $("clearVoice").disabled=false;
-        $("recordingInstruction").textContent="Rekaman tersimpan sementara. Putar sampai selesai; AI akan menilai otomatis berdasarkan transkrip.";
-        setRecordingStatus("Rekaman tersimpan. Silakan putar ulang sebelum menilai.");
-      }else{
-        setRecordingStatus("Rekaman kosong. Silakan coba merekam kembali.");
-      }
-      if(audioStream){audioStream.getTracks().forEach(t=>t.stop());audioStream=null;}
-      $("startRecord").disabled=false;
-      $("stopRecord").disabled=true;
-      $("recordingWave").style.opacity=".35";
-    };
-    mediaRecorder.start();
-    isRecording=true;
-    $("startRecord").disabled=true;
-    $("stopRecord").disabled=false;
-    $("continueAssessment").disabled=true;
-    $("clearVoice").disabled=true;
-    $("recordingWave").style.opacity="1";
-    $("recordingInstruction").textContent="Sedang merekam suara. Bicara seperti biasa, lalu tekan Selesai & Simpan Rekaman.";
-    setRecordingStatus("🔴 Sedang merekam suara...");
-    if(rec) try{rec.start()}catch(e){}
-  }catch(err){
-    setRecordingStatus("Izin mikrofon tidak diberikan atau mikrofon tidak tersedia.");
-  }
+$("clearVoice").onclick=()=>{
+  // Tombol manual untuk menghapus hasil voice saat halaman rekaman terbuka.
+  resetVoiceSession();
+  $("voiceStatus").textContent="Hasil voice sebelumnya sudah dihapus. Silakan mulai berbicara lagi.";
 };
 $("stopRecord").onclick=()=>{
-  if(mediaRecorder && mediaRecorder.state!=="inactive"){
-    try{mediaRecorder.stop()}catch(e){}
-  }
-  if(rec) try{rec.stop()}catch(e){}
-  isRecording=false;
-  setRecordingStatus("Menyimpan rekaman...");
-};
-$("continueAssessment").onclick=()=>{
-  $("transcript").value=removeRepeatedTranscriptParts(finalVoiceTranscript.trim());
+  if(rec)try{rec.stop()}catch(e){}
   hideRecording();
-  $("voiceStatus").textContent=$("transcript").value
-    ?"Rekaman siap dinilai. Penilaian dapat dijalankan sekarang."
-    :"Audio tersimpan, tetapi transkrip otomatis belum tersedia. Isi transkrip terlebih dahulu sebelum menilai.";
+  $("voiceStatus").textContent="Voice selesai. Anda kembali ke menu awal.";
+  $("resultPanel").style.display="none";
   window.scrollTo({top:0,behavior:"smooth"});
-};
-
-// Setelah pengguna memutar rekaman sampai selesai, jalankan penilaian otomatis.
-$("savedAudio").addEventListener("ended",()=>{
-  const transcript=removeRepeatedTranscriptParts(finalVoiceTranscript.trim());
-  if(!transcript){
-    setRecordingStatus("Pemutaran selesai, tetapi transkrip suara belum tersedia. Browser belum menghasilkan teks dari rekaman ini.");
-    $("recordingInstruction").textContent="Audio berhasil diputar. Namun penilaian membutuhkan transkrip. Coba rekam ulang dengan izin mikrofon aktif, atau kembali dan isi transkrip secara manual.";
-    return;
-  }
-  $("transcript").value=transcript;
-  hideRecording();
-  $("assessment").style.display="block";
-  $("master").style.display="none";
-  document.querySelectorAll(".nav button").forEach(b=>b.classList.toggle("active",b.dataset.page==="assessment"));
-  $("voiceStatus").textContent="Pemutaran selesai. AI sedang menilai hasil rekaman...";
-  window.scrollTo({top:0,behavior:"smooth"});
-  // Beri kesempatan halaman berpindah sebelum hasil penilaian ditampilkan.
-  setTimeout(()=>{
-    evaluate();
-    $("voiceStatus").textContent="Penilaian otomatis selesai berdasarkan transkrip rekaman.";
-    $("resultPanel").scrollIntoView({behavior:"smooth",block:"start"});
-  },150);
-});
-$("clearVoice").onclick=()=>{
-  if(isRecording){
-    if(mediaRecorder && mediaRecorder.state!=="inactive") try{mediaRecorder.stop()}catch(e){}
-    if(rec) try{rec.stop()}catch(e){}
-  }
-  resetVoiceSession();
-  setRecordingStatus("Rekaman dan transkrip telah dihapus.");
-  $("recordingInstruction").textContent="Rekaman telah dihapus. Tekan Mulai Merekam untuk membuat rekaman baru.";
-};
-$("backAssessment").onclick=()=>{
-  if(isRecording){
-    if(mediaRecorder && mediaRecorder.state!=="inactive") try{mediaRecorder.stop()}catch(e){}
-    if(rec) try{rec.stop()}catch(e){}
-  }
-  hideRecording();
-  window.scrollTo({top:0,behavior:"smooth"});
-};
-$("clear").onclick=()=>{
-  resetVoiceSession();
-  $("voiceStatus").textContent="Transkrip dan hasil penilaian dibersihkan.";
 };
 renderCats();renderMaster();
 </script>
